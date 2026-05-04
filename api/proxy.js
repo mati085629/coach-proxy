@@ -29,93 +29,45 @@ export default async function handler(req, res) {
       const { message, history } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
       const contents = [...(history || []), { role: 'user', parts: [{ text: message }] }];
-
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents })
-        }
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents }) }
       );
-
-      // 🔴 FIX IMPORTANTE
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Error Gemini:", errorText);
-
-        return res.status(500).json({
-          error: "Gemini está ocupado, intenta de nuevo en unos segundos"
-        });
+        return res.status(500).json({ error: "Gemini está ocupado, intenta de nuevo en unos segundos" });
       }
-
       const data = await response.json();
       const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta';
-
       return res.status(200).json({ reply });
-
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
   }
 
   // ── COMIDAS ──
-if (action === 'guardar-comida') {
-  try {
-    const body = req.body;
-
-    if (!body) {
-      return res.status(400).json({ error: 'No llegaron datos' });
+  if (action === 'guardar-comida') {
+    try {
+      const data = await supabase('POST', 'comidas', req.body);
+      if (data.error) return res.status(500).json({ error: data.error.message });
+      return res.status(200).json(data);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
     }
+  }
 
-    const { data, error } = await supabase
-      .from('comidas')
-      .insert([body])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error Supabase:', error);
-      return res.status(500).json({ error: error.message });
-    }
-
+  if (action === 'get-comidas') {
+    const { fecha } = req.query;
+    const data = await supabase('GET', 'comidas', null, `?fecha=eq.${fecha}&order=creado_en.asc`);
     return res.status(200).json(data);
-  } catch (err) {
-    console.error('Error servidor:', err);
-    return res.status(500).json({ error: err.message });
-  }
-}
-
-if (action === 'get-comidas') {
-  const { fecha } = req.query;
-
-  const { data, error } = await supabase
-    .from('comidas')
-    .select('*')
-    .eq('fecha', fecha)
-    .order('creado_en', { ascending: true });
-
-  if (error) {
-    return res.status(500).json({ error: error.message });
   }
 
-  return res.status(200).json(data);
-}
-
-if (action === 'delete-comida') {
-  const { id } = req.query;
-
-  const { error } = await supabase
-    .from('comidas')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    return res.status(500).json({ error: error.message });
+  if (action === 'delete-comida') {
+    const { id } = req.query;
+    const data = await supabase('DELETE', 'comidas', null, `?id=eq.${id}`);
+    return res.status(200).json({ ok: true });
   }
-
-  return res.status(200).json({ ok: true });
-}
 
   // ── AGUA ──
   if (action === 'guardar-agua') {
