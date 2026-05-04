@@ -60,20 +60,62 @@ export default async function handler(req, res) {
   }
 
   // ── COMIDAS ──
-  if (action === 'guardar-comida') {
-    const data = await supabase('POST', 'comidas', req.body);
+if (action === 'guardar-comida') {
+  try {
+    const body = req.body;
+
+    if (!body) {
+      return res.status(400).json({ error: 'No llegaron datos' });
+    }
+
+    const { data, error } = await supabase
+      .from('comidas')
+      .insert([body])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error Supabase:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
     return res.status(200).json(data);
+  } catch (err) {
+    console.error('Error servidor:', err);
+    return res.status(500).json({ error: err.message });
   }
-  if (action === 'get-comidas') {
-    const { fecha } = req.query;
-    const data = await supabase('GET', 'comidas', null, `?fecha=eq.${fecha}&order=creado_en.asc`);
-    return res.status(200).json(data);
+}
+
+if (action === 'get-comidas') {
+  const { fecha } = req.query;
+
+  const { data, error } = await supabase
+    .from('comidas')
+    .select('*')
+    .eq('fecha', fecha)
+    .order('creado_en', { ascending: true });
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
   }
-  if (action === 'delete-comida') {
-    const { id } = req.query;
-    const data = await supabase('DELETE', 'comidas', null, `?id=eq.${id}`);
-    return res.status(200).json(data);
+
+  return res.status(200).json(data);
+}
+
+if (action === 'delete-comida') {
+  const { id } = req.query;
+
+  const { error } = await supabase
+    .from('comidas')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
   }
+
+  return res.status(200).json({ ok: true });
+}
 
   // ── AGUA ──
   if (action === 'guardar-agua') {
