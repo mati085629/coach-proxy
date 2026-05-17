@@ -23,7 +23,6 @@ export default async function handler(req, res) {
 
   const { action } = req.query;
 
-  // ── COACH ──
   if (!action) {
     try {
       const { message, history } = req.body;
@@ -46,7 +45,20 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── COMIDAS ──
+  if (action === 'analizar-foto') {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(req.body) }
+      );
+      const data = await response.json();
+      return res.status(200).json(data);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   if (action === 'guardar-comida') {
     try {
       const data = await supabase('POST', 'comidas', req.body);
@@ -65,26 +77,26 @@ export default async function handler(req, res) {
 
   if (action === 'delete-comida') {
     const { id } = req.query;
-    const data = await supabase('DELETE', 'comidas', null, `?id=eq.${id}`);
+    await supabase('DELETE', 'comidas', null, `?id=eq.${id}`);
     return res.status(200).json({ ok: true });
   }
 
-  // ── AGUA ──
   if (action === 'guardar-agua') {
     const data = await supabase('POST', 'agua', req.body);
     return res.status(200).json(data);
   }
+
   if (action === 'get-agua') {
     const { fecha } = req.query;
     const data = await supabase('GET', 'agua', null, `?fecha=eq.${fecha}`);
     return res.status(200).json(data);
   }
 
-  // ── HÁBITOS ──
   if (action === 'guardar-habito') {
     const data = await supabase('POST', 'habitos_registro', req.body);
     return res.status(200).json(data);
   }
+
   if (action === 'get-habitos') {
     const { fecha_inicio, fecha_fin } = req.query;
     const data = await supabase('GET', 'habitos_registro', null, `?fecha=gte.${fecha_inicio}&fecha=lte.${fecha_fin}`);
@@ -93,16 +105,3 @@ export default async function handler(req, res) {
 
   return res.status(400).json({ error: 'Acción no reconocida' });
 }
-if (action === 'analizar-foto') {
-    try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(req.body) }
-      );
-      const data = await response.json();
-      return res.status(200).json(data);
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  }
